@@ -190,9 +190,10 @@ resource "aws_codebuild_project" "ci" {
 
 # --- Webhook: trigger on push to deploy branch + PRs --------------------------
 resource "aws_codebuild_webhook" "ci" {
-  count        = var.enable_cicd && var.github_token != "" ? 1 : 0
-  project_name = aws_codebuild_project.ci[0].name
-  build_type   = "BUILD"
+  count           = var.enable_cicd && var.github_token != "" ? 1 : 0
+  project_name    = aws_codebuild_project.ci[0].name
+  build_type      = "BUILD"
+  manual_creation = true
 
   filter_group {
     filter {
@@ -201,7 +202,7 @@ resource "aws_codebuild_webhook" "ci" {
     }
     filter {
       type    = "HEAD_REF"
-      pattern = "refs/heads/${var.deploy_branch}"
+      pattern = "^refs/heads/${var.deploy_branch}$"
     }
   }
 
@@ -210,6 +211,14 @@ resource "aws_codebuild_webhook" "ci" {
       type    = "EVENT"
       pattern = "PULL_REQUEST_CREATED,PULL_REQUEST_UPDATED,PULL_REQUEST_REOPENED"
     }
+    filter {
+      type    = "BASE_REF"
+      pattern = "^refs/heads/${var.deploy_branch}$"
+    }
+  }
+
+  lifecycle {
+    ignore_changes = [manual_creation]
   }
 
   depends_on = [aws_codebuild_source_credential.github]
